@@ -239,10 +239,10 @@ fn main() {
                 }
                 child.kill().expect("failed to kill child");
                 let ws = child.wait();
-                if let Ok(ecode) = ws {
-                    if ecode.success() {
-                        eprintln!("wp: Killed child, but it died a happy process");
-                    }
+                if let Ok(ecode) = ws
+                    && ecode.success()
+                {
+                    eprintln!("wp: Killed child, but it died a happy process");
                 }
                 ctx.send(ws)
                     .expect("failed to send wait status from ithread after kill");

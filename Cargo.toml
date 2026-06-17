@@ -1,7 +1,7 @@
 [package]
 name = "wp"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 license = "MIT"
 authors = ["Thomas Habets <thomas@habets.se>"]
 readme = "README.md"
