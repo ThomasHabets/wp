@@ -152,14 +152,20 @@ struct Opt {
     #[arg(short, long)]
     output: bool,
 
-    command: Vec<String>,
+    command: String,
+
+    #[arg(trailing_var_arg = true,
+        allow_hyphen_values = true,
+        num_args = 1..,
+    )]
+    args: Vec<String>,
 }
 
 fn main() {
     let opt = Opt::parse();
 
     // TODO: move all but flag parsing to lib.
-    let mut prep = Command::new(&opt.command[0]);
+    let mut prep = Command::new(&opt.command);
     if opt.output {
         prep.stdout(Stdio::piped());
     }
@@ -168,7 +174,7 @@ fn main() {
     }
 
     let mut child = prep
-        .args(&opt.command[1..])
+        .args(&opt.args[0..])
         .spawn()
         .expect("failed to execute child");
 
