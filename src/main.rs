@@ -22,6 +22,7 @@ enum State {
     Idle,
     Data,
     DataEsc,
+    Eof,
 }
 
 #[derive(Debug)]
@@ -50,7 +51,7 @@ impl Decapper {
                 State::Idle => match *ch {
                     EOF => {
                         ret = true;
-                        break;
+                        self.state = State::Eof;
                     }
                     SOB => {
                         self.state = State::Data;
@@ -103,6 +104,15 @@ impl Decapper {
                         return None;
                     }
                 },
+                State::Eof => {
+                    let u = &[*ch];
+                    let s = std::str::from_utf8(u).unwrap_or("<binary>");
+                    eprintln!(
+                        "wp: got input after EOF at index {}: {ch} ({s})",
+                        self.count - 1,
+                    );
+                    return None;
+                }
             };
         }
         if out.is_empty() {
