@@ -11,3 +11,7 @@ description = "Wrap a pipe for safer processing"
 
 [dependencies]
 clap = { version = "4", features = ["derive", "cargo"]}
+
+[[bin]]
+name = "wp"
+path = "src/main.rs"
