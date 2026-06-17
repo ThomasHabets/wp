@@ -7,6 +7,7 @@ authors = ["Thomas Habets <thomas@habets.se>"]
 readme = "README.md"
 repository = "https://github.com/ThomasHabets/rtlsdr-pure"
 keywords = ["shell"]
+description = "Wrap a pipe for safer processing"
 
 [dependencies]
 clap = { version = "4", features = ["derive", "cargo"]}
