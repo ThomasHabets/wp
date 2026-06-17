@@ -1,5 +1,5 @@
 [package]
-name = "wp"
+name = "wp-cli"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
@@ -7,8 +7,6 @@ authors = ["Thomas Habets <thomas@habets.se>"]
 readme = "README.md"
 repository = "https://github.com/ThomasHabets/rtlsdr-pure"
 keywords = ["shell"]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 clap = { version = "4", features = ["derive", "cargo"]}
