@@ -199,27 +199,38 @@ fn main() {
             return thread::spawn(move || {
                 loop {
                     let mut buffer = vec![0; 4096_usize];
-                    let n = childout
-                        .read(&mut buffer)
-                        .expect("failed to read from child stdout");
+                    let n = match childout.read(&mut buffer) {
+                        Ok(n) => n,
+                        Err(e) => {
+                            eprintln!("wp: failed to read from child stdout: {}", e);
+                            return false;
+                        }
+                    };
                     if n == 0 {
                         break;
                     }
-                    std::io::stdout()
-                        .write_all(&encap(&buffer[0..n]))
-                        .expect("error writing to stdout");
+                    if let Err(e) = std::io::stdout().write_all(&encap(&buffer[0..n])) {
+                        eprintln!("wp: Error writing to stdout: {e}");
+                        return false;
+                    }
                 }
-                if ok_out_rx
-                    .recv()
-                    .expect("othread failed to receive if it should send EOF")
-                {
-                    std::io::stdout()
-                        .write_all(&[EOF])
-                        .expect("write error writing eof");
+                match ok_out_rx.recv() {
+                    Ok(send_eof) => {
+                        if send_eof && let Err(e) = std::io::stdout().write_all(&[EOF]) {
+                            eprintln!("wp: Error writing EOF to stdout: {e}");
+                            false
+                        } else {
+                            true
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("wp: Did not get EOF success status. Assuming not: {e}");
+                        false
+                    }
                 }
             });
         }
-        thread::spawn(move || {})
+        thread::spawn(move || true)
     })();
 
     let (ctx, crx) = mpsc::channel();
@@ -253,7 +264,9 @@ fn main() {
                         None => break,
                     }
                 }
-                child.kill().expect("failed to kill child");
+                if let Err(e) = child.kill() {
+                    eprintln!("wp: failed to kill child: {}", e);
+                }
                 let ws = child.wait();
                 if let Ok(ecode) = ws
                     && ecode.success()
@@ -282,29 +295,31 @@ fn main() {
         .recv()
         .expect("main thread getting back client object")
         .expect("wait success");
-    if !ecode.success() {
-        std::process::exit({
-            if let Some(code) = ecode.code() {
-                eprintln!("wp: Subprocess died with exit code {}", code);
-                code
-            } else if let Some(sig) = ecode.signal() {
-                eprintln!("wp: died due to signal {}", sig);
-                1
-            } else {
-                eprintln!("wp: with no exit code and no signal");
-                1
-            }
-        });
-    }
+    let child_exit_code = if ecode.success() {
+        None
+    } else if let Some(code) = ecode.code() {
+        eprintln!("wp: Subprocess died with exit code {}", code);
+        Some(code)
+    } else if let Some(sig) = ecode.signal() {
+        eprintln!("wp: died due to signal {}", sig);
+        Some(1)
+    } else {
+        eprintln!("wp: with no exit code and no signal");
+        Some(1)
+    };
 
-    let ithread_ok = ithread.join().expect("failed to join ithread");
+    let ithread_ok = ithread.join().expect("failed to join input reading");
     if opt.output {
-        ok_out_tx
-            .send(ithread_ok)
-            .expect("failed to send ok to stdout thread");
+        let _ = ok_out_tx.send(child_exit_code.is_none() && ithread_ok);
     }
-    othread.join().expect("failed to join othread");
+    let othread_ok = othread.join().expect("failed to join output writing");
+    if let Some(code) = child_exit_code {
+        std::process::exit(code);
+    }
     if !ithread_ok {
+        std::process::exit(1);
+    }
+    if !othread_ok {
         std::process::exit(1);
     }
 }
