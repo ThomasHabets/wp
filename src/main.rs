@@ -18,16 +18,6 @@ const EOB: u8 = b'>';
 const ESOB: u8 = b'[';
 const EEOB: u8 = b']';
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn blatest() -> Result<(), String> {
-        assert_eq!(12, 12);
-        Ok(())
-    }
-}
-
 #[derive(Debug)]
 enum State {
     Idle,
