@@ -5,7 +5,7 @@ edition = "2024"
 license = "MIT"
 authors = ["Thomas Habets <thomas@habets.se>"]
 readme = "README.md"
-repository = "https://github.com/ThomasHabets/rtlsdr-pure"
+repository = "https://github.com/ThomasHabets/wp"
 keywords = ["shell"]
 description = "Wrap a pipe for safer processing"
 
