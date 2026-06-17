@@ -280,13 +280,15 @@ fn main() {
             }
         });
     }
-    if !ithread.join().expect("failed to join ithread") {
-        std::process::exit(1);
-    }
+
+    let ithread_ok = ithread.join().expect("failed to join ithread");
     if opt.output {
         ok_out_tx
-            .send(true)
+            .send(ithread_ok)
             .expect("failed to send ok to stdout thread");
     }
     othread.join().expect("failed to join othread");
+    if !ithread_ok {
+        std::process::exit(1);
+    }
 }
