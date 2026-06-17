@@ -243,22 +243,25 @@ fn main() {
                 .expect("failed to take ownership of child stdin");
             return thread::spawn(move || {
                 let mut dec = Decapper::new();
+                let mut saw_eof = false;
                 loop {
                     let mut buffer = vec![0; 4096_usize];
                     let n = std::io::stdin()
                         .read(&mut buffer)
                         .expect("failed to read from stdin");
                     if n == 0 {
+                        if saw_eof {
+                            drop(childin);
+                            ctx.send(child.wait())
+                                .expect("failed to send wait status from ithread");
+                            return true;
+                        }
                         break;
                     }
                     let buf = &buffer[0..n];
                     match dec.add(&childin, buf) {
                         Some(true) => {
-                            // Got EOF.
-                            drop(childin);
-                            ctx.send(child.wait())
-                                .expect("failed to send wait status from ithread");
-                            return true;
+                            saw_eof = true;
                         }
                         Some(false) => (),
                         None => break,
