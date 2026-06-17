@@ -1,12 +1,11 @@
-use clap::{command, Arg, ArgAction};
-use std::io;
-use std::io::Read;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::os::unix::process::ExitStatusExt;
 use std::process::Command;
 use std::process::Stdio;
 use std::sync::mpsc;
 use std::thread;
+
+use clap::Parser;
 
 const ESC: u8 = b'_';
 const EESC: u8 = b'-';
@@ -144,60 +143,39 @@ fn encap(inp: &[u8]) -> Vec<u8> {
     out
 }
 
+#[derive(clap::Parser)]
+#[clap(version)]
+struct Opt {
+    #[arg(short, long)]
+    input: bool,
+
+    #[arg(short, long)]
+    output: bool,
+
+    command: Vec<String>,
+}
+
 fn main() {
-    let matches = command!()
-        .trailing_var_arg(true)
-        .arg(
-            Arg::new("input")
-                .help("Enable input processing")
-                .short('i')
-                .action(ArgAction::SetTrue),
-        )
-        .arg(
-            Arg::new("output")
-                .help("Enable output processing")
-                .short('o')
-                .action(ArgAction::SetTrue),
-        )
-        .arg(
-            Arg::new("command")
-                .required(true)
-                .takes_value(true)
-                .multiple_values(true),
-        )
-        .get_matches();
-
-    let args = matches
-        .get_many::<String>("command")
-        .unwrap_or_default()
-        .map(|v| v.as_str())
-        .collect::<Vec<_>>();
-
-    let flag_o = matches
-        .get_one::<bool>("output")
-        .expect("Failed to get output flag");
-    let flag_i = matches
-        .get_one::<bool>("input")
-        .expect("Failed to get input flag");
+    let opt = Opt::parse();
 
     // TODO: move all but flag parsing to lib.
-    let mut prep = Command::new(args[0]);
-    if *flag_o {
+    let mut prep = Command::new(&opt.command[0]);
+    if opt.output {
         prep.stdout(Stdio::piped());
     }
-    if *flag_i {
+    if opt.input {
         prep.stdin(Stdio::piped());
     }
 
     let mut child = prep
-        .args(&args[1..])
+        .args(&opt.command[1..])
         .spawn()
         .expect("failed to execute child");
 
     let (ok_out_tx, ok_out_rx) = mpsc::channel();
 
     let othread = (|| {
-        if *flag_o {
+        if opt.output {
             let mut childout = child
                 .stdout
                 .take()
@@ -211,7 +189,7 @@ fn main() {
                     if n == 0 {
                         break;
                     }
-                    io::stdout()
+                    std::io::stdout()
                         .write_all(&encap(&buffer[0..n]))
                         .expect("error writing to stdout");
                 }
@@ -219,7 +197,7 @@ fn main() {
                     .recv()
                     .expect("othread failed to receive if it should send EOF")
                 {
-                    io::stdout()
+                    std::io::stdout()
                         .write_all(&[EOF])
                         .expect("write error writing eof");
                 }
@@ -231,7 +209,7 @@ fn main() {
     let (ctx, crx) = mpsc::channel();
 
     let ithread = (|| {
-        if *flag_i {
+        if opt.input {
             let childin = child
                 .stdin
                 .take()
@@ -240,7 +218,7 @@ fn main() {
                 let mut dec = Decapper::new();
                 loop {
                     let mut buffer = vec![0; 4096_usize];
-                    let n = io::stdin()
+                    let n = std::io::stdin()
                         .read(&mut buffer)
                         .expect("failed to read from stdin");
                     if n == 0 {
@@ -302,7 +280,7 @@ fn main() {
             }
         });
     }
-    if *flag_o {
+    if opt.output {
         ok_out_tx
             .send(true)
             .expect("failed to send ok to stdout thread");
