@@ -154,7 +154,7 @@ fn encap(inp: &[u8]) -> Vec<u8> {
 }
 
 #[derive(clap::Parser)]
-#[clap(version)]
+#[clap(name = "wp", version)]
 struct Opt {
     #[arg(short, long)]
     input: bool,
